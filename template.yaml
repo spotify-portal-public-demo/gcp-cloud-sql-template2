@@ -1,0 +1,126 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: gcp-cloud-sql-template
+  title: GCP - Cloud SQL
+  description: Create a Cloud SQL instance in GCP
+  tags:
+    - infra
+    - terraform
+    - gcp
+    - cloud-sql
+spec:
+  owner: group:infraops
+  type: database
+
+  parameters:
+    - title: About
+      required:
+        - component_id
+      properties:
+        component_id:
+          title: Name
+          type: string
+          description: The unique name of the database
+          ui:field: EntityNamePicker
+        description:
+          title: Description
+          type: string
+          description: Description of the database
+
+    - title: Ownership
+      required:
+        - owner
+      properties:
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the database
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              - kind: Group
+        system:
+          title: System
+          type: string
+          description: The system for the database
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: System
+
+    - title: Configuration
+      required:
+        - region
+        - db_password
+      properties:
+        region:
+          title: GCP Region
+          type: string
+          description: GCP region of the database
+          enum:
+            - europe-west1
+            - us-central1
+            - asia-east1
+        db_password:
+          title: Root Password
+          type: string
+          description: Root password for the database, will be stored as a GitHub secret
+          ui:field: Secret
+
+    - title: Location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - spotify-portal-public-demo
+
+  steps:
+    - id: template
+      name: Fetch Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        copyWithoutRender:
+          - .github/workflows/*
+        values:
+          component_id: ${{ parameters.component_id }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          region: ${{ parameters.region }}
+          destination: ${{ parameters.repoUrl | parseRepoUrl }}
+
+    - id: publish
+      name: Publish
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: This is ${{ parameters.component_id }}
+        repoVisibility: public
+        defaultBranch: main
+        protectEnforceAdmins: false
+        secrets:
+          DB_PASSWORD: ${{ secrets.db_password }}
+
+    - id: register
+      name: Register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
