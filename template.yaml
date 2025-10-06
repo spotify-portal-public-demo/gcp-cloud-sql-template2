@@ -2,7 +2,7 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: gcp-cloud-sql-template2
-  title: GCP - Cloud SQL
+  title: GCP - Cloud SQL 2
   description: Create a Cloud SQL instance in GCP
   tags:
     - infra
